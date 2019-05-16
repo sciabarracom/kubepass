@@ -76,39 +76,9 @@ write_files:
         #
         # This archive contains:
         #
-        #	cluster.sh
-        #	large.sh
         #	master.sh
-        #	rook.sh
-        #	small.sh
         #	worker.sh
         #
-        echo x - cluster.sh
-        sed 's/^X//' >cluster.sh << 'END-of-cluster.sh'
-        X#!/bin/sh
-        XYAML=${1:-cloud-init.yaml}
-        Xif ! test -f $YAML
-        Xthen curl -s http://kubepass.sciabarra.com >$YAML
-        Xfi
-        Xmultipass launch -n kube-master -c 2 -m 4G -d 15G --cloud-init $YAML
-        Xmultipass launch -n kube-worker1 -m 2G -d 15G --cloud-init $YAML
-        Xmultipass launch -n kube-worker2 -m 2G -d 15G --cloud-init $YAML
-        Xmultipass launch -n kube-worker3 -m 2G -d 15G --cloud-init $YAML
-        X
-        END-of-cluster.sh
-        echo x - large.sh
-        sed 's/^X//' >large.sh << 'END-of-large.sh'
-        X#!/bin/sh
-        XYAML=${1:-cloud-init.yaml}
-        Xif ! test -f $YAML
-        Xthen curl -s http://kubepass.sciabarra.com >$YAML
-        Xfi
-        Xmultipass launch -n kube-master -c 2 -m 4G -d 25G --cloud-init $YAML
-        Xmultipass launch -n kube-worker1 -c 2-m 4G -d 25G --cloud-init $YAML
-        Xmultipass launch -n kube-worker2 -c 2 -m 4G -d 25G --cloud-init $YAML
-        Xmultipass launch -n kube-worker3 -c 2 -m 4G -d 25G --cloud-init $YAML
-        X
-        END-of-large.sh
         echo x - master.sh
         sed 's/^X//' >master.sh << 'END-of-master.sh'
         X#!/bin/bash
@@ -144,27 +114,6 @@ write_files:
         Xfi
         X
         END-of-master.sh
-        echo x - rook.sh
-        sed 's/^X//' >rook.sh << 'END-of-rook.sh'
-        X#!/bin/bash
-        Xexport ROOK="https://raw.githubusercontent.com/rook/rook/release-0.9/cluster/examples/kubernetes/ceph"
-        Xkubectl apply -f "$ROOK/operator.yaml"
-        Xkubectl apply -f "$ROOK/cluster.yaml"
-        Xkubectl apply -f "$ROOK/storageclass.yaml"
-        Xkubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-        X
-        END-of-rook.sh
-        echo x - small.sh
-        sed 's/^X//' >small.sh << 'END-of-small.sh'
-        X#!/bin/sh
-        XYAML=${1:-cloud-init.yaml}
-        Xif ! test -f $YAML
-        Xthen curl -s http://kubepass.sciabarra.com >$YAML
-        Xfi
-        Xmultipass launch -n kube-master -c 2 -m 2G -d 10G --cloud-init $YAML
-        Xmultipass launch -n kube-worker1 -m 1G -d 10G --cloud-init $YAML
-        Xmultipass launch -n kube-worker2 -m 1G -d 10G --cloud-init $YAML
-        END-of-small.sh
         echo x - worker.sh
         sed 's/^X//' >worker.sh << 'END-of-worker.sh'
         X#!/bin/bash

@@ -11,7 +11,7 @@ index.html: cloud-init.yaml cloud-init.shar
 	cat cloud-init.yaml >$@
 	cat cloud-init.shar | sed -e 's/^/        /' >>$@
 
-cloud-init.shar: $(shell ls *.sh)
+cloud-init.shar: master.sh worker.sh 
 	shar $^ >>$@
 
 destroy:
