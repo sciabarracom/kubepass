@@ -14,7 +14,7 @@ cluster: index.html
 	bash cluster/$(S) index.html
 
 cloud-init.shar: master.sh worker.sh 
-	shar $^ >>$@
+	shar $^ >$@
 
 destroy:
 	-rm cloud-init.shar
@@ -28,7 +28,7 @@ shell:
 	multipass shell $(HOST)
 
 cloud-log:
-	multipass exec $(HOST) tail -f /var/log/cloud-init-output.log
+	multipass exec $(HOST) -- tail -f /var/log/cloud-init-output.log
 
 .PHONY: cluster small large destroy enter state
 
