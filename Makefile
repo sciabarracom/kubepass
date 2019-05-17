@@ -12,7 +12,6 @@ index.html: cloud-init.yaml cloud-init.shar
 
 cluster: index.html
 	bash cluster/$(S) index.html
-	multipass exec -- kube-master bash -c "cloud-init status --wait && sudo watch kubectl get nodes"
 
 cloud-init.shar: master.sh worker.sh 
 	shar $^ >>$@
@@ -28,7 +27,8 @@ destroy:
 shell:
 	multipass shell $(HOST)
 
-state:
+cloud-log:
+	multipass exec $(HOST) tail -f /var/log/cloud-init-output.log
 
 .PHONY: cluster small large destroy enter state
 
