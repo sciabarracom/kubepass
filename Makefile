@@ -1,15 +1,18 @@
-cluster: index.html
-	bash cluster.sh index.html
+S ?= index.html
 
-small: index.html
-	bash small.sh index.html
-
-large: index.html
-	bash large.sh index.html
+ifndef N
+  HOST=kube-master
+else
+ HOST=kube-worker$(N)
+endif
 
 index.html: cloud-init.yaml cloud-init.shar
 	cat cloud-init.yaml >$@
 	cat cloud-init.shar | sed -e 's/^/        /' >>$@
+
+cluster: index.html
+	bash cluster/$(S) index.html
+	multipass exec -- kube-master bash -c "cloud-init status --wait && sudo watch kubectl get nodes"
 
 cloud-init.shar: master.sh worker.sh 
 	shar $^ >>$@
@@ -22,13 +25,10 @@ destroy:
 	-multipass delete kube-worker3
 	-multipass purge
 
-enter:
-	@if test -z "$(N)" ;\
-	then multipass shell kube-master ;\
-	else multipass shell kube-worker$(N) ; fi
+shell:
+	multipass shell $(HOST)
 
 state:
-	multipass exec -- kube-master bash -c "cloud-init status --wait && sudo watch kubectl get nodes"
 
 .PHONY: cluster small large destroy enter state
 
