@@ -1,5 +1,5 @@
 #cloud-config
-#<script>location.href='https://github.com/sciabarracom/kubepass'</script>
+# <script>location.href='https://github.com/sciabarracom/kubepass'</script>
 runcmd:
 - sysctl -p
 - systemctl daemon-reload
