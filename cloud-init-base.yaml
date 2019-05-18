@@ -1,0 +1,72 @@
+#cloud-config
+# <script>location.href='https://github.com/sciabarracom/kubepass'</script>
+runcmd:
+- sysctl -p
+- systemctl daemon-reload
+- systemctl restart docker kubelet
+- bash /usr/local/bin/cloud-init.shar
+- bash /usr/local/bin/master-init
+- bash /usr/local/bin/worker-init
+bootcmd:
+- "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+- "curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -"
+growpart:
+    mode: auto
+    devices: ["/"]
+manage_etc_hosts: localhost
+locale: "en_US.UTF-8"
+package_update: true
+package_upgrade: true
+package_reboot_if_required: false
+apt_update: true
+apt_upgrade: true
+apt:
+  sources:
+      docker:
+          keyid: "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+          source: "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+      kubernetes:
+          keyid: "54A647F9048D5688D7DA2ABE6A030B21BA07F4FB"
+          source: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+packages: 
+    # if you change kubernetes version...
+    - kubeadm=1.14.1-00
+    - kubelet=1.14.1-00
+    - kubectl=1.14.1-00
+    # ...also use a SUPPORTED docker version for it
+    - docker-ce=18.06.2~ce~3-0~ubuntu
+    - apt-transport-https
+    - ntp
+    - jq
+    - tftp
+    - arp-scan
+write_files:
+  - path: /etc/modules
+    content: |
+      ip_vs
+      ip_vs_rr
+      ip_vs_wrr
+      ip_vs_sh
+      nf_conntrack_ipv4
+  - path: /etc/syctl.conf
+    content: |
+      net.ipv4.ip_forward=1
+      net.bridge.bridge-nf-call-ip6tables=1
+      net.bridge.bridge-nf-call-iptables=1
+  - path: /etc/environment
+    content: |
+      LC_ALL=en_US.UTF-8
+      LANG=en_US.UTF-8
+      KUBECONFIG=/etc/kubernetes/admin.conf
+  - path: /etc/docker/daemon.json
+    content: |
+        { 
+        "exec-opts": ["native.cgroupdriver=systemd"],
+        "log-driver": "json-file",
+        "log-opts": {
+        "max-size": "100m" },
+        "storage-driver": "overlay2" 
+        }
+  - path: /usr/local/bin/cloud-init.shar
+    content: |
+        cd $(dirname $0)

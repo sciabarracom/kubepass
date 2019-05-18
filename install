@@ -1,0 +1,9 @@
+#!/bin/bash
+F="install-${1:?command}"
+curl -Ls "$U" >"/tmp/$F"
+U="${2:-https://kubepass.sciabarra.com}/install.d/$1" 
+chmod +x /tmp/$F
+sudo mv /tmp/$F /usr/local/bin/$F
+sudo chown root:root /usr/local/bin/$F
+shift
+sudo /usr/local/bin/$F "$@"

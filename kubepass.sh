@@ -7,6 +7,7 @@ destroy) echo "Destroying the cluster"
   echo    # (optional) move to a new line
   if [[ $REPLY =~ ^[Yy]$ ]]
   then
+   echo "
    multipass -v delete kube-master
    multipass -v delete kube-worker1
    multipass -v delete kube-worker2
