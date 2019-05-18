@@ -79,7 +79,7 @@ write_files:
         #
         #	master-init
         #	worker-init
-        #	install
+        #	deploy
         #
         echo x - master-init
         sed 's/^X//' >master-init << 'END-of-master-init'
@@ -135,17 +135,17 @@ write_files:
         Xdone
         Xbash /tmp/kube-join.sh
         END-of-worker-init
-        echo x - install
-        sed 's/^X//' >install << 'END-of-install'
+        echo x - deploy
+        sed 's/^X//' >deploy << 'END-of-deploy'
         X#!/bin/bash
-        XF="install-${1:?command}"
+        XF="deploy${1:?command}"
+        XU="${2:-https://kubepass.sciabarra.com}/deployment/$1" 
         Xcurl -Ls "$U" >"/tmp/$F"
-        XU="${2:-https://kubepass.sciabarra.com}/install.d/$1" 
         Xchmod +x /tmp/$F
         Xsudo mv /tmp/$F /usr/local/bin/$F
         Xsudo chown root:root /usr/local/bin/$F
         Xshift
         Xsudo /usr/local/bin/$F "$@"
-        END-of-install
+        END-of-deploy
         exit
         

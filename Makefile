@@ -15,7 +15,7 @@ kubepass.yaml: cloud-init.yaml kubepass.shar
 	cat cloud-init.yaml >$@
 	cat kubepass.shar | sed -e 's/^/        /' >>$@
 
-kubepass.shar: master-init worker-init install
+kubepass.shar: master-init worker-init deploy
 	shar $^ >$@
 
 status:

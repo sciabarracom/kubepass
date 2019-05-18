@@ -1,7 +1,7 @@
 #!/bin/bash
-F="install-${1:?command}"
+F="deploy${1:?command}"
+U="${2:-https://kubepass.sciabarra.com}/deployment/$1" 
 curl -Ls "$U" >"/tmp/$F"
-U="${2:-https://kubepass.sciabarra.com}/install.d/$1" 
 chmod +x /tmp/$F
 sudo mv /tmp/$F /usr/local/bin/$F
 sudo chown root:root /usr/local/bin/$F
