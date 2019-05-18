@@ -54,7 +54,3 @@ $ curl -Ls kubepass.sciabarra.com/cluster >kubepass.sh
 $ bash kubepass.sh destroy
 ```
 
-## Actually I neeed a different setup...
-
-Ok, you want more control. Well, everything is just a `cloud-init.yaml` that builds a differeent setup
-
