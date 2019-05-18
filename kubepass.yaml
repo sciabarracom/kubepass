@@ -1,0 +1,151 @@
+#cloud-config
+# <script>location.href='https://github.com/sciabarracom/kubepass'</script>
+runcmd:
+- sysctl -p
+- systemctl daemon-reload
+- systemctl restart docker kubelet
+- bash /usr/local/bin/cloud-init.shar
+- bash /usr/local/bin/master-init
+- bash /usr/local/bin/worker-init
+bootcmd:
+- "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+- "curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -"
+growpart:
+    mode: auto
+    devices: ["/"]
+manage_etc_hosts: localhost
+locale: "en_US.UTF-8"
+package_update: true
+package_upgrade: true
+package_reboot_if_required: false
+apt_update: true
+apt_upgrade: true
+apt:
+  sources:
+      docker:
+          keyid: "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+          source: "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+      kubernetes:
+          keyid: "54A647F9048D5688D7DA2ABE6A030B21BA07F4FB"
+          source: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+packages: 
+    # if you change kubernetes version...
+    - kubeadm=1.14.1-00
+    - kubelet=1.14.1-00
+    - kubectl=1.14.1-00
+    # ...also use a SUPPORTED docker version for it
+    - docker-ce=18.06.2~ce~3-0~ubuntu
+    - apt-transport-https
+    - ntp
+    - jq
+    - tftp
+    - arp-scan
+write_files:
+  - path: /etc/modules
+    content: |
+      ip_vs
+      ip_vs_rr
+      ip_vs_wrr
+      ip_vs_sh
+      nf_conntrack_ipv4
+  - path: /etc/syctl.conf
+    content: |
+      net.ipv4.ip_forward=1
+      net.bridge.bridge-nf-call-ip6tables=1
+      net.bridge.bridge-nf-call-iptables=1
+  - path: /etc/environment
+    content: |
+      LC_ALL=en_US.UTF-8
+      LANG=en_US.UTF-8
+      KUBECONFIG=/etc/kubernetes/admin.conf
+  - path: /etc/docker/daemon.json
+    content: |
+        { 
+        "exec-opts": ["native.cgroupdriver=systemd"],
+        "log-driver": "json-file",
+        "log-opts": {
+        "max-size": "100m" },
+        "storage-driver": "overlay2" 
+        }
+  - path: /usr/local/bin/cloud-init.shar
+    content: |
+        cd $(dirname $0)
+        # This is a shell archive.  Save it in a file, remove anything before
+        # this line, and then unpack it by entering "sh file".  Note, it may
+        # create directories; files and directories will be owned by you and
+        # have default permissions.
+        #
+        # This archive contains:
+        #
+        #	master-init
+        #	worker-init
+        #	install
+        #
+        echo x - master-init
+        sed 's/^X//' >master-init << 'END-of-master-init'
+        X#!/bin/bash
+        Xif ! test "$(hostname)" == "kube-master"
+        Xthen echo "I am not the kube-master" ; exit 0
+        Xfi
+        Xecho "*** Kubernetes Pulling Images:"
+        Xkubeadm config images pull
+        Xecho "*** Initializing Kubernetes:"
+        Xif ! kubeadm init \
+        X--apiserver-advertise-address "0.0.0.0" \
+        X| tee /tmp/kubeadm.log
+        Xthen exit 1
+        Xfi
+        Xecho "*** Installing Weave:"
+        Xexport K8S_VERSION="$(kubectl version | base64 | tr -d '\n')"
+        Xexport WEAVE_URL="https://cloud.weave.works/k8s/net?k8s-version=$K8S_VERSION"
+        Xexport KUBECONFIG=/etc/kubernetes/admin.conf
+        Xkubectl apply -f "$WEAVE_URL"
+        Xecho "*** Waiting for Kubernetes to get ready:"
+        XSTATE="NotReady"
+        Xwhile test "$STATE" != "Ready" ; do 
+        XSTATE=$(kubectl get node | tail -1 | awk '{print $2}')
+        Xecho -n "." ; sleep 1
+        Xdone
+        Xecho ""
+        Xif grep "kubeadm join" /tmp/kubeadm.log >/dev/null
+        Xthen apt-get install -y tftpd-hpa
+        X     kubeadm token create --ttl 0 --print-join-command >/var/lib/tftpboot/kube-join.sh
+        X     systemctl start tftpd-hpa
+        X     echo "Created Token and Shared with Tftp"
+        Xelse echo "No join command ready - something went wrong" ; exit 1
+        Xfi
+        X
+        END-of-master-init
+        echo x - worker-init
+        sed 's/^X//' >worker-init << 'END-of-worker-init'
+        X#!/bin/bash
+        Xif test "$(hostname)" == "kube-master"
+        Xthen echo "I am the master, not a worker" ; exit 0
+        Xfi
+        Xtest -e /tmp/kube-join.sh && rm /tmp/kube-join.sh
+        Xwhile ! test -s /tmp/kube-join.sh
+        Xdo sudo arp-scan -l | tail +3 | head -n -3 | awk '{ print $1 }' \
+        X | while read a
+        X   do echo Checking $a
+        X      echo get kube-join.sh /tmp/kube-join.sh | tftp $a
+        X      if test -s /tmp/kube-join.sh
+        X      then break
+        X      fi
+        X   done
+        Xdone
+        Xbash /tmp/kube-join.sh
+        END-of-worker-init
+        echo x - install
+        sed 's/^X//' >install << 'END-of-install'
+        X#!/bin/bash
+        XF="install-${1:?command}"
+        Xcurl -Ls "$U" >"/tmp/$F"
+        XU="${2:-https://kubepass.sciabarra.com}/install.d/$1" 
+        Xchmod +x /tmp/$F
+        Xsudo mv /tmp/$F /usr/local/bin/$F
+        Xsudo chown root:root /usr/local/bin/$F
+        Xshift
+        Xsudo /usr/local/bin/$F "$@"
+        END-of-install
+        exit
+        

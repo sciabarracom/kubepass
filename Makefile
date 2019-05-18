@@ -6,16 +6,17 @@ else
  HOST=kube-worker$(N)
 endif
 
-all: index.html cloud-init.yaml
+all: index.html kubepass.yaml
+	git push origin master
 
 index.html: kubepass.sh
 	cp -f kubepass.sh index.html
 
-cloud-init.yaml: cloud-init-base.yaml cloud-init.shar
-	cat cloud-init-base.yaml >$@
-	cat cloud-init.shar | sed -e 's/^/        /' >>$@
+kubepass.yaml: cloud-init.yaml kubepass.shar
+	cat cloud-init.yaml >$@
+	cat kubepass.shar | sed -e 's/^/        /' >>$@
 
-cloud-init.shar: master-init worker-init install
+kubepass.shar: master-init worker-init install
 	shar $^ >$@
 
 status:
@@ -28,9 +29,10 @@ shell:
 cloud-log:
 	multipass exec $(HOST) -- tail -f /var/log/cloud-init-output.log
 
-get-kube-config:
+kube-config:
 	multipass exec kube-master sudo cat /etc/kubernetes/admin.conf >~/.kube/config
 	kubectl get nodes
 
-.PHONY: cluster small large destroy enter state
+.PHONY: all status shell cloud-log kube-config
+
 
