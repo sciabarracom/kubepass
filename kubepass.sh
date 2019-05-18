@@ -1,6 +1,11 @@
 #!/bin/bash
 # <script>location.href='https://github.com/sciabarracom/kubepass'</script>
 YAML="$(dirname $0)"/kubepass.yaml
+if ! multipass -h >/dev/null 
+then echo "Install multipass 0.6.1, please."
+     echo "https://github.com/CanonicalLtd/multipass/releases/tag/v0.6.1"
+     exit 1
+fi
 case "$1" in
  destroy) echo "Destroying the cluster"
   read -p "Are you sure? " -n 1 -r

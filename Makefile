@@ -7,7 +7,6 @@ else
 endif
 
 all: index.html kubepass.yaml
-	git push origin master
 
 index.html: kubepass.sh
 	cp -f kubepass.sh index.html
