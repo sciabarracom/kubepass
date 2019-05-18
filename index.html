@@ -4,7 +4,7 @@
 CMD="${1:-small}"
 NUM="${2:-3}"
 
-YAML="~/.kubepass.yaml"
+YAML=~/.kubepass.yaml
 WINMULTIPASS="/c/Program Files/Multipass"
 
 MULTIPASS=multipass
@@ -22,7 +22,7 @@ build() {
    COUNT="$1"
    ARGS_MASTER="$2"
    ARGS_WORKERS="$3"
-   test -f $YAML || curl -Ls http://kubepass.sciabarra.com/kubepass.yaml >$YAML
+   test -f $YAML || curl -Ls https://kubepass.sciabarra.com/kubepass.yaml >$YAML
    "$MULTIPASS" launch -n kube-master $ARGS_MASTER --cloud-init $YAML
    for (( I=1 ; I<= $COUNT; I++))
    do "$MULTIPASS" launch -n "kube-worker$I" $ARGS_WORKERS --cloud-init $YAML
