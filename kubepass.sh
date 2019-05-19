@@ -30,7 +30,8 @@ build() {
    do "$MULTIPASS" launch -n "kube-worker$I" $ARGS_WORKERS --cloud-init $YAML
    done
    "$MULTIPASS" exec kube-master -- cloud-init status --wait 
-   "$MULTIPASS" exec kube-master -- wait-ready "$COUNT" 
+   "$MULTIPASS" exec kube-master -- wait-ready "$(expr "$COUNT" + 1)"
+   echo "Ready!"
 }
 
 destroy() {
@@ -44,14 +45,28 @@ destroy() {
    "$MULTIPASS" -v purge
 }
 
-case "$CMD" in
- destroy) 
-   echo "Destroying the cluster"
+are_you_sure() {
    read -p "Are you sure? " -n 1 -r
    echo ""
    if [[ $REPLY =~ ^[Yy]$ ]]
-   then destroy $NUM
+   then return
    fi
+   echo "Aborting..."
+   exit 1
+}
+
+case "$CMD" in
+ destroy) 
+   echo "Destroying the cluster"
+   are_you_sure
+   destroy $NUM
+ ;;
+ config)
+    if test -f ~/.kube/config
+    then echo "Overwriting ~/.kube/config"
+         are_you_sure
+    fi
+    "$MULTIPASS" exec kube-master -- sudo cat /etc/kubernetes/admin.conf >~/.kube/config
  ;;
  nodes) 
    "$MULTIPASS" exec kube-master -- sudo kubectl get nodes 
@@ -69,6 +84,6 @@ case "$CMD" in
    build $NUM "-c 2 -d 10G -m 2G" "-c 1 -d 10G -m 1G"
  ;;
  *)
-    echo "usage: (small|large|huge|destroy) [#workers]"
+    echo "usage: (small|large|huge|config|destroy) [#workers]"
  ;;
 esac
