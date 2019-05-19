@@ -1,13 +1,12 @@
 #!/bin/bash
 # <script>location.href='https://github.com/sciabarracom/kubepass'</script>
 
-CMD="${1:-small}"
+CMD="${1:-help}"
 NUM="${2:-3}"
 
 TEMP=/tmp
 YAML=/tmp/kubepass.yaml
 MULTIPASS=multipass
-
 WINMULTIPASS="/c/Program Files/Multipass"
 if test -d "$WINMULTIPASS"
 then PATH="$WINMULTIPASS/bin:$PATH"
@@ -25,7 +24,7 @@ build() {
    COUNT="$1"
    ARGS_MASTER="$2"
    ARGS_WORKERS="$3"
-   test -f $YAML || curl -s https://kubepass.sciabarra.com/kubepass.yaml >$TEMP/kubepass.yaml
+   test -f $YAML || curl -s https://kubepass.sciabarra.com >$TEMP/kubepass.yaml
    "$MULTIPASS" launch -n kube-master $ARGS_MASTER --cloud-init $YAML
    for (( I=1 ; I<= $COUNT; I++))
    do "$MULTIPASS" launch -n "kube-worker$I" $ARGS_WORKERS --cloud-init $YAML

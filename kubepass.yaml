@@ -4,7 +4,9 @@ runcmd:
 - sysctl -p
 - systemctl daemon-reload
 - systemctl restart docker kubelet
-- bash /usr/local/bin/cloud-init.shar
+- apt-mark hold kubelet kubectl kubeadm
+- bash /usr/local/cloud-init.shar
+- chmod +x /usr/local/bin/*
 - bash /usr/local/bin/master-init
 - bash /usr/local/bin/worker-init
 bootcmd:
@@ -67,9 +69,9 @@ write_files:
         "max-size": "100m" },
         "storage-driver": "overlay2" 
         }
-  - path: /usr/local/bin/cloud-init.shar
+  - path: /usr/local/cloud-init.shar
     content: |
-        cd $(dirname $0)
+        cd "$(dirname $0)"
         # This is a shell archive.  Save it in a file, remove anything before
         # this line, and then unpack it by entering "sh file".  Note, it may
         # create directories; files and directories will be owned by you and
@@ -77,12 +79,52 @@ write_files:
         #
         # This archive contains:
         #
-        #	master-init
-        #	worker-init
-        #	deploy
+        #	bin/wait-ready
+        #	bin/rook
+        #	bin/deploy
+        #	bin/master-init
+        #	bin/cloud-log
+        #	bin/worker-init
         #
-        echo x - master-init
-        sed 's/^X//' >master-init << 'END-of-master-init'
+        echo x - bin/wait-ready
+        sed 's/^X//' >bin/wait-ready << 'END-of-bin/wait-ready'
+        X#!/bin/bash
+        XN="${1:?ready count}"
+        Xcloud-init status --wait
+        Xwatch sudo kubectl get nodes &
+        XPID=$1
+        XC="0"
+        Xwhile test "$C" -lt "$N"
+        Xdo C="$(sudo kubectl get nodes | awk '$2 == "Ready"' | wc -l)"   
+        X   sleep 1
+        Xdone
+        Xkill -9 $PID
+        X
+        END-of-bin/wait-ready
+        echo x - bin/rook
+        sed 's/^X//' >bin/rook << 'END-of-bin/rook'
+        X#!/bin/bash
+        Xexport ROOK="https://raw.githubusercontent.com/rook/rook/release-0.9/cluster/examples/kubernetes/ceph"
+        Xkubectl apply -f "$ROOK/operator.yaml"
+        Xkubectl apply -f "$ROOK/cluster.yaml"
+        Xkubectl apply -f "$ROOK/storageclass.yaml"
+        Xkubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+        X
+        END-of-bin/rook
+        echo x - bin/deploy
+        sed 's/^X//' >bin/deploy << 'END-of-bin/deploy'
+        X#!/bin/bash
+        XF="deploy${1:?command}"
+        XU="${2:-https://kubepass.sciabarra.com}/deployment/$1" 
+        Xcurl -Ls "$U" >"/tmp/$F"
+        Xchmod +x /tmp/$F
+        Xsudo mv /tmp/$F /usr/local/bin/$F
+        Xsudo chown root:root /usr/local/bin/$F
+        Xshift
+        Xsudo /usr/local/bin/$F "$@"
+        END-of-bin/deploy
+        echo x - bin/master-init
+        sed 's/^X//' >bin/master-init << 'END-of-bin/master-init'
         X#!/bin/bash
         Xif ! test "$(hostname)" == "kube-master"
         Xthen echo "I am not the kube-master" ; exit 0
@@ -115,9 +157,14 @@ write_files:
         Xelse echo "No join command ready - something went wrong" ; exit 1
         Xfi
         X
-        END-of-master-init
-        echo x - worker-init
-        sed 's/^X//' >worker-init << 'END-of-worker-init'
+        END-of-bin/master-init
+        echo x - bin/cloud-log
+        sed 's/^X//' >bin/cloud-log << 'END-of-bin/cloud-log'
+        X#!/bin/bash
+        Xsudo tail -f /var/log/cloud-init-output.log
+        END-of-bin/cloud-log
+        echo x - bin/worker-init
+        sed 's/^X//' >bin/worker-init << 'END-of-bin/worker-init'
         X#!/bin/bash
         Xif test "$(hostname)" == "kube-master"
         Xthen echo "I am the master, not a worker" ; exit 0
@@ -134,18 +181,6 @@ write_files:
         X   done
         Xdone
         Xbash /tmp/kube-join.sh
-        END-of-worker-init
-        echo x - deploy
-        sed 's/^X//' >deploy << 'END-of-deploy'
-        X#!/bin/bash
-        XF="deploy${1:?command}"
-        XU="${2:-https://kubepass.sciabarra.com}/deployment/$1" 
-        Xcurl -Ls "$U" >"/tmp/$F"
-        Xchmod +x /tmp/$F
-        Xsudo mv /tmp/$F /usr/local/bin/$F
-        Xsudo chown root:root /usr/local/bin/$F
-        Xshift
-        Xsudo /usr/local/bin/$F "$@"
-        END-of-deploy
+        END-of-bin/worker-init
         exit
         

@@ -1,0 +1,12 @@
+#!/bin/bash
+N="${1:?ready count}"
+cloud-init status --wait
+watch sudo kubectl get nodes &
+PID=$1
+C="0"
+while test "$C" -lt "$N"
+do C="$(sudo kubectl get nodes | awk '$2 == "Ready"' | wc -l)"   
+   sleep 1
+done
+kill -9 $PID
+

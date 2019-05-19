@@ -4,57 +4,61 @@ Tired of minikube? Needing a _real_ Kubernetes cluster when doing your developme
 
 ## What is this?
 
-It is a set of scripts to setup a real Kubernetes *cluster* for development, using either OSX, Linux. I actually also works on Windows, although with a few hacks. Virtual machine provided courtesy of *multipass*.
+It is a `cloud-init` script to setup a real Kubernetes *cluster* for development, using either OSX, Linux or Windows, using `multipass`.
+
+### What is multipass?
+
+It is an awesome utility from Canonical able to setup a virtual machine from a command line. It works on Linux, MacOS and even Windows. It uses native virtual machine support provided by the various operating system (KVM on Linux, bhyve on MacOS, HyperV on Windows).
+
+### And what is cloud-init?
+
+It is an initialization format for "cloud" images. It is used by multipass, so I leveraged it to setup a Kubernetes cluster.
+
+### Mmmm, and what is Kubernetes?
+
+Oh, well... check [https://kubernetes.io](here). 
+
+# Prererequisites
+
+You need a recent version of Windows, Linux os MacOS that supports multipass (it must have virtual machine support).
 
 Before starting, install [https://github.com/CanonicalLtd/multipass/releases/tag/v0.6.1](multipass). 
 
-On windows you also need [https://docs.microsoft.com/en-us/windows/wsl/install-win10](bash).
+Then download `kubepass.yaml`:
 
-Currently tested version:
+- On Linux/MacOS terminal: `curl -Ls kubepass.sciabarra.com >kubepass.yaml`
+- On Windows PowerShell: `Invoke-WebRequest https://kubepass.sciabarra.com -OutFile kubepass.yaml`
 
-- Multipass 0.6.1
-- MacOS Mojave 10.14.4
-- Ubuntu Linux 18.06
-- Windows 10 with WSL
+# Building your cluster
 
-## Ok, I have multipass and Linux or OSX, now?
+You can build your cluster creating a master and multiple workers. 
 
-If you trust my scripts, you have at least 8GB of memory and 30GB of disk space, you can setup a small cluster (one master 2Gb and 3 workers 1GB each, disk 10G), just:
+The master must be named `kube-master`, and needs at least 2Gb of memory, 2 Vcpu and 10gb of disk space. Generally you need also at lest two workers with 1Gb memory each. To setup such a cluster (you need at least 8Gb of physical memory):
 
 ```
-$ curl -Ls kubepass.sciabarra.com | bash
+multipass launch -n kube-master -m2g -c2 -d10g --cloud-init kubepass.yaml
+multipass launch -m1g --cloud-init kubepass.yaml
+multipass launch -m1g --cloud-init kubepass.yaml
 ```
 
-If you want more, and you have at least 16GB of memory and 60GB of disk space, you can setup a large cluster (1 Master 4gb, 3 workers 2GB each)
+Of course you can tune the memory (`-m`) the number of CPU (`-c`) and the disk size (`-d`) as you prefer. You can also give a name (`-n`) to each virtual machine. The only requirement is that the master is called `kube-master`.
+
+Once you have launcher you can wait for the cluster to bee ready with:
 
 ```
-$ curl -Ls kubepass.sciabarra.com >kubepass.sh
-$ bash kubepass.sh large
+multipass exec kube-master wait-ready 3
 ```
 
-If you want even more and you have at least 32GB of memory and 100GB of disk space, you can setup a huge cluster with
+Replace `3` with the actual number of nodes in the cluster.
+
+Remove the entire cluster with:
 
 ```
-$ curl -Ls kubepass.sciabarra.com/cluster >kubepass.sh
-$ bash kubepass.sh huge
+multipass delete --all
+multipass purge
 ```
 
-## Cleanup
+Warning! This removes all the virtual machines.
+If you want to be more selective, list the virtual machines with `multipass list` and then delete them individually.
 
-Ok, I have done, how can I get rid of the cluster?
-
-```
-$ multipass delete --all
-```
-
-This will actually delete all the multipass virtual machines. If you have other vms and you only want to delete the vms
-
-```
-$ curl -Ls kubepass.sciabarra.com/cluster >kubepass.sh
-$ bash kubepass.sh destroy
-```
-
-## I have Windows!
-
-TODO!
 

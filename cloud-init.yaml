@@ -4,7 +4,9 @@ runcmd:
 - sysctl -p
 - systemctl daemon-reload
 - systemctl restart docker kubelet
-- bash /usr/local/bin/cloud-init.shar
+- apt-mark hold kubelet kubectl kubeadm
+- bash /usr/local/cloud-init.shar
+- chmod +x /usr/local/bin/*
 - bash /usr/local/bin/master-init
 - bash /usr/local/bin/worker-init
 bootcmd:
@@ -67,6 +69,6 @@ write_files:
         "max-size": "100m" },
         "storage-driver": "overlay2" 
         }
-  - path: /usr/local/bin/cloud-init.shar
+  - path: /usr/local/cloud-init.shar
     content: |
-        cd $(dirname $0)
+        cd "$(dirname $0)"

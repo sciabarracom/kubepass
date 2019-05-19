@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo tail -f /var/log/cloud-init-output.log
