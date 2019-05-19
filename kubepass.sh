@@ -4,15 +4,13 @@
 CMD="${1:-help}"
 NUM="${2:-3}"
 
-TEMP=/tmp
-YAML=/tmp/kubepass.yaml
+YAML="$(dirname $0)/kubepass.yaml"
 MULTIPASS=multipass
+
 WINMULTIPASS="/c/Program Files/Multipass"
 if test -d "$WINMULTIPASS"
 then PATH="$WINMULTIPASS/bin:$PATH"
      MULTIPASS=multipass.exe
-     TEMP=/c/Windows/Temp
-     YAML=c:/Windows/Temp/kubepass.yaml
 fi
 if ! "$MULTIPASS" -h >/dev/null 
 then echo "Install multipass 0.6.1, please."
@@ -24,12 +22,15 @@ build() {
    COUNT="$1"
    ARGS_MASTER="$2"
    ARGS_WORKERS="$3"
-   test -f $YAML || curl -s https://kubepass.sciabarra.com >$TEMP/kubepass.yaml
+   if ! test -f $YAML 
+   then echo "no $YAML" ; exit 1 
+   fi 
    "$MULTIPASS" launch -n kube-master $ARGS_MASTER --cloud-init $YAML
    for (( I=1 ; I<= $COUNT; I++))
    do "$MULTIPASS" launch -n "kube-worker$I" $ARGS_WORKERS --cloud-init $YAML
    done
    "$MULTIPASS" exec kube-master -- cloud-init status --wait 
+   "$MULTIPASS" exec kube-master -- wait-ready "$COUNT" 
 }
 
 destroy() {

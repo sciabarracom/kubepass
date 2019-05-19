@@ -46,7 +46,8 @@ Of course you can tune the memory (`-m`) the number of CPU (`-c`) and the disk s
 Once you have launcher you can wait for the cluster to bee ready with:
 
 ```
-multipass exec kube-master wait-ready 3
+multipass exec kube-master -- cloud-init status --wait
+multipass exec kube-master -- wait-ready 3
 ```
 
 Replace `3` with the actual number of nodes in the cluster.
@@ -61,4 +62,13 @@ multipass purge
 Warning! This removes all the virtual machines.
 If you want to be more selective, list the virtual machines with `multipass list` and then delete them individually.
 
+## Bigger clusters
 
+If you have at least 16Gb memory you can build a cluster with a 4Gb master and three 2Gb workers:
+
+```
+multipass launch -n kube-master -m4g -c2 -d15g --cloud-init kubepass.yaml
+multipass launch -m2g -c2 -d15g --cloud-init kubepass.yaml
+multipass launch -m2g -c2 -d15g --cloud-init kubepass.yaml
+multipass launch -m2g -c2 -d15g --cloud-init kubepass.yaml
+```
