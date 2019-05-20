@@ -43,6 +43,9 @@ packages:
     - tftp
     - arp-scan
 write_files:
+  - path: /etc/kubepass_release
+    content: |
+      1
   - path: /etc/modules
     content: |
       ip_vs
@@ -79,13 +82,20 @@ write_files:
         #
         # This archive contains:
         #
+        #	bin/get-knative-istio
         #	bin/wait-ready
-        #	bin/rook
-        #	bin/deploy
+        #	bin/kp
         #	bin/master-init
+        #	bin/get-helm
         #	bin/cloud-log
+        #	bin/get-knative-gloo
+        #	bin/get-rook
+        #	bin/get-istio
         #	bin/worker-init
         #
+        echo x - bin/get-knative-istio
+        sed 's/^X//' >bin/get-knative-istio << 'END-of-bin/get-knative-istio'
+        END-of-bin/get-knative-istio
         echo x - bin/wait-ready
         sed 's/^X//' >bin/wait-ready << 'END-of-bin/wait-ready'
         X#!/bin/bash
@@ -101,28 +111,18 @@ write_files:
         Xkill -9 $PID
         X
         END-of-bin/wait-ready
-        echo x - bin/rook
-        sed 's/^X//' >bin/rook << 'END-of-bin/rook'
+        echo x - bin/kp
+        sed 's/^X//' >bin/kp << 'END-of-bin/kp'
         X#!/bin/bash
-        Xexport ROOK="https://raw.githubusercontent.com/rook/rook/release-0.9/cluster/examples/kubernetes/ceph"
-        Xkubectl apply -f "$ROOK/operator.yaml"
-        Xkubectl apply -f "$ROOK/cluster.yaml"
-        Xkubectl apply -f "$ROOK/storageclass.yaml"
-        Xkubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-        X
-        END-of-bin/rook
-        echo x - bin/deploy
-        sed 's/^X//' >bin/deploy << 'END-of-bin/deploy'
-        X#!/bin/bash
-        XF="deploy${1:?command}"
-        XU="${2:-https://kubepass.sciabarra.com}/deployment/$1" 
+        XF="${1:?command}"
+        XU="${2:-https://kubepass.sciabarra.com}/bin/$1" 
         Xcurl -Ls "$U" >"/tmp/$F"
         Xchmod +x /tmp/$F
         Xsudo mv /tmp/$F /usr/local/bin/$F
         Xsudo chown root:root /usr/local/bin/$F
         Xshift
         Xsudo /usr/local/bin/$F "$@"
-        END-of-bin/deploy
+        END-of-bin/kp
         echo x - bin/master-init
         sed 's/^X//' >bin/master-init << 'END-of-bin/master-init'
         X#!/bin/bash
@@ -158,11 +158,51 @@ write_files:
         Xfi
         X
         END-of-bin/master-init
+        echo x - bin/get-helm
+        sed 's/^X//' >bin/get-helm << 'END-of-bin/get-helm'
+        X#!/bin/bash
+        XHELM_URL=https://storage.googleapis.com/kubernetes-helm/helm-v2.14.0-linux-amd64.tar.gz 
+        Xcurl -Ls $HELM_URL | sudo tar xzvf - --strip-components=1 -C /usr/bin
+        Xsudo kubectl --namespace kube-system create serviceaccount tiller
+        Xsudo kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+        Xsudo kubectl --namespace kube-system patch deploy tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}' 
+        Xsudo helm init
+        END-of-bin/get-helm
         echo x - bin/cloud-log
         sed 's/^X//' >bin/cloud-log << 'END-of-bin/cloud-log'
         X#!/bin/bash
         Xsudo tail -f /var/log/cloud-init-output.log
         END-of-bin/cloud-log
+        echo x - bin/get-knative-gloo
+        sed 's/^X//' >bin/get-knative-gloo << 'END-of-bin/get-knative-gloo'
+        X
+        Xsudo apt-get update
+        Xsudo apt-get -y install python
+        Xcurl -sL https://run.solo.io/gloo/install | sudo bash
+        Xsudo mv ~/.gloo/bin/glooctl /usr/local/bin
+        Xsudo glooctl install knative
+        X
+        END-of-bin/get-knative-gloo
+        echo x - bin/get-rook
+        sed 's/^X//' >bin/get-rook << 'END-of-bin/get-rook'
+        X#!/bin/bash
+        Xexport ROOK="https://raw.githubusercontent.com/rook/rook/release-0.9/cluster/examples/kubernetes/ceph"
+        Xkubectl apply -f "$ROOK/operator.yaml"
+        Xkubectl apply -f "$ROOK/cluster.yaml"
+        Xkubectl apply -f "$ROOK/storageclass.yaml"
+        Xkubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+        X
+        END-of-bin/get-rook
+        echo x - bin/get-istio
+        sed 's/^X//' >bin/get-istio << 'END-of-bin/get-istio'
+        Xexport ISTIO_VERSION=1.1.7 
+        Xcurl -L https://git.io/getLatestIstio | sh -
+        Xcd istio-$ISTIO_VERSION
+        Xsudo mv bin/istioctl /usr/bin
+        Xsudo kubectl create namespace istio-system
+        Xsudo helm install install/kubernetes/helm/istio-init --name istio-init --namespace istio-system --set gateways.istio-ingressgateway.type=NodePort
+        X
+        END-of-bin/get-istio
         echo x - bin/worker-init
         sed 's/^X//' >bin/worker-init << 'END-of-bin/worker-init'
         X#!/bin/bash

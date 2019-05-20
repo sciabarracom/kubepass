@@ -43,6 +43,9 @@ packages:
     - tftp
     - arp-scan
 write_files:
+  - path: /etc/kubepass_release
+    content: |
+      1
   - path: /etc/modules
     content: |
       ip_vs

@@ -1,6 +1,6 @@
 #!/bin/bash
-F="deploy${1:?command}"
-U="${2:-https://kubepass.sciabarra.com}/deployment/$1" 
+F="${1:?command}"
+U="${2:-https://kubepass.sciabarra.com}/bin/$1" 
 curl -Ls "$U" >"/tmp/$F"
 chmod +x /tmp/$F
 sudo mv /tmp/$F /usr/local/bin/$F
