@@ -3,5 +3,3 @@ sudo apt-get update
 sudo apt-get -y install python
 curl -sL https://run.solo.io/gloo/install | sudo bash
 sudo mv ~/.gloo/bin/glooctl /usr/local/bin
-sudo glooctl install knative
-
