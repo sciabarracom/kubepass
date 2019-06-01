@@ -27,7 +27,7 @@ build() {
    fi 
    "$MULTIPASS" launch -n kube-master $ARGS_MASTER --cloud-init $YAML
    for (( I=1 ; I<= $COUNT; I++))
-   do "$MULTIPASS" launch -n "kube-worker$I" $ARGS_WORKERS --cloud-init $YAML
+   do "$MULTIPASS" launch -n "kube-node$I" $ARGS_WORKERS --cloud-init $YAML
    done
    "$MULTIPASS" exec kube-master -- cloud-init status --wait 
    "$MULTIPASS" exec kube-master -- wait-ready "$(expr "$COUNT" + 1)"
@@ -40,7 +40,7 @@ destroy() {
    "$MULTIPASS" -v delete kube-master
    for (( I=1 ; I<= $COUNT; I++))
    do  echo "Deleting kube-worker$I"
-       "$MULTIPASS" delete "kube-worker$I"
+       "$MULTIPASS" delete "kube-node$I"
    done
    "$MULTIPASS" -v purge
 }
