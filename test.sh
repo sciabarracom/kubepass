@@ -6,5 +6,6 @@ multipass launch -m1g -d10g --cloud-init /tmp/kubepass.yaml
 multipass launch -m1g -d10g --cloud-init /tmp/kubepass.yaml
 multipass exec kube-master -- cloud-init status --wait
 multipass exec kube-master -- wait-ready 3
+mkdir ~/.kube >/dev/null
 multipass exec kube-master sudo cat /etc/kubernetes/admin.conf >~/.kube/config
 
