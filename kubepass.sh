@@ -13,8 +13,8 @@ then PATH="$WINMULTIPASS/bin:$PATH"
      MULTIPASS=multipass.exe
 fi
 if ! "$MULTIPASS" -h >/dev/null 
-then echo "Install multipass 0.6.1, please."
-     echo "https://github.com/CanonicalLtd/multipass/releases/tag/v0.6.1"
+then echo "Install multipass 0.7.0, please."
+     echo "https://github.com/CanonicalLtd/multipass/releases/tag/v0.7.0"
      exit 1
 fi
 
