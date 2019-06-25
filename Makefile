@@ -34,5 +34,3 @@ kube-config:
 	kubectl get nodes
 
 .PHONY: status shell cloud-log kube-config
-
-

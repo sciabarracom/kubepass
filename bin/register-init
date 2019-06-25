@@ -1,0 +1,36 @@
+#!/bin/bash
+CADIR=/etc/docker/certs.d/register.k8s:5000
+if ! test "$(hostname)" == "kube-master"
+then 
+     echo get ca.crt /tmp/ca.crt | tftp kube-master
+     if test -s /tmp/ca.crt
+     then
+       mkdir -p $CADIR
+       mv /tmp/ca.crt $CADIR/ca.crt
+       IP="$(grep kube-master /etc/hosts  | awk '{ print $1}')"
+       echo "$IP register register.k8s" >>/etc/hosts
+     fi
+     exit
+fi
+# preparation
+IP=$(ip -4 addr show $(basename /sys/class/net/en*) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+echo "subjectAltName=IP:$IP" >>/etc/ssl/openssl.conf
+echo "$IP register.k8s" >>/etc/hosts
+mkdir -p /certs /etc/docker/certs.d/register.k8s:5000
+# generate certs
+openssl req \
+ -newkey rsa:4096 -nodes -sha256 \
+ -keyout /certs/domain.key \
+ -x509 -days 365 \
+ -out /certs/domain.crt \
+ -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=register.k8s"
+# make it available to docker and others
+cp /certs/domain.crt /etc/docker/certs.d/register.k8s:5000/ca.crt
+cp /certs/domain.crt /var/lib/tftpboot/ca.crt
+# start docker registry
+docker run -d -p 5000:5000 \
+ --restart=always --name registry \
+ -v /certs:/certs \
+ -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+ -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+ registry:2

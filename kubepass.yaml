@@ -9,6 +9,7 @@ runcmd:
 - chmod +x /usr/local/bin/*
 - bash /usr/local/bin/master-init
 - bash /usr/local/bin/worker-init
+- bash /usr/local/bin/register-init
 bootcmd:
 - "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
 - "curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -"
@@ -82,12 +83,52 @@ write_files:
         #
         # This archive contains:
         #
+        #	bin/register-init
         #	bin/wait-ready
         #	bin/master-init
         #	bin/cloud-log
         #	bin/kinst
         #	bin/worker-init
         #
+        echo x - bin/register-init
+        sed 's/^X//' >bin/register-init << 'END-of-bin/register-init'
+        X#!/bin/bash
+        XCADIR=/etc/docker/certs.d/register.k8s:5000
+        Xif ! test "$(hostname)" == "kube-master"
+        Xthen 
+        X     echo get ca.crt /tmp/ca.crt | tftp kube-master
+        X     if test -s /tmp/ca.crt
+        X     then
+        X       mkdir -p $CADIR
+        X       mv /tmp/ca.crt $CADIR/ca.crt
+        X       IP="$(grep kube-master /etc/hosts  | awk '{ print $1}')"
+        X       echo "$IP register register.k8s" >>/etc/hosts
+        X     fi
+        X     exit
+        Xfi
+        X# preparation
+        XIP=$(ip -4 addr show $(basename /sys/class/net/en*) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+        Xecho "subjectAltName=IP:$IP" >>/etc/ssl/openssl.conf
+        Xecho "$IP register.k8s" >>/etc/hosts
+        Xmkdir -p /certs /etc/docker/certs.d/register.k8s:5000
+        X# generate certs
+        Xopenssl req \
+        X -newkey rsa:4096 -nodes -sha256 \
+        X -keyout /certs/domain.key \
+        X -x509 -days 365 \
+        X -out /certs/domain.crt \
+        X -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=register.k8s"
+        X# make it available to docker and others
+        Xcp /certs/domain.crt /etc/docker/certs.d/register.k8s:5000/ca.crt
+        Xcp /certs/domain.crt /var/lib/tftpboot/ca.crt
+        X# start docker registry
+        Xdocker run -d -p 5000:5000 \
+        X --restart=always --name registry \
+        X -v /certs:/certs \
+        X -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+        X -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+        X registry:2
+        END-of-bin/register-init
         echo x - bin/wait-ready
         sed 's/^X//' >bin/wait-ready << 'END-of-bin/wait-ready'
         X#!/bin/bash
@@ -165,10 +206,11 @@ write_files:
         Xwhile ! test -s /tmp/kube-join.sh
         Xdo sudo arp-scan -l | tail +3 | head -n -3 | awk '{ print $1 }' \
         X | while read a
-        X   do echo Checking $a
+        X   do echo Checking $a   
         X      echo get kube-join.sh /tmp/kube-join.sh | tftp $a
         X      if test -s /tmp/kube-join.sh
-        X      then break
+        X      then echo "$a kube-master" >>/etc/hosts
+        X           break
         X      fi
         X   done
         Xdone

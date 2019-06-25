@@ -76,8 +76,8 @@ case "$CMD" in
    build $NUM "-c 2 -d 25G -m 4G" "-c 2 -d 25G -m 4G"
  ;;
  large) 
-   echo "Creating Large Kubernetes Cluster: master 4G, 3 workers 2G, disk 15G"
-   build $NUM "-c 2 -d 25G -m 4G" "-c 2 -d 25G -m 4G"
+   echo "Creating Large Kubernetes Cluster: master 2G, 3 workers 2G, disk 15G"
+   build $NUM "-c 2 -d 15G -m 2G" "-c 1 -d 15G -m 2G"
  ;;
  small) 
    echo "Creating Small Kubernetes Cluster: master 2G, 3 workers 1G, disk 10G"
