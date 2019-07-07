@@ -9,7 +9,7 @@ runcmd:
 - chmod +x /usr/local/bin/*
 - bash /usr/local/bin/master-init
 - bash /usr/local/bin/worker-init
-- bash /usr/local/bin/register-init
+- bash /usr/local/bin/registry-init
 bootcmd:
 - "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
 - "curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -"
@@ -43,6 +43,7 @@ packages:
     - jq
     - tftp
     - arp-scan
+    - apache2-utils
 write_files:
   - path: /etc/kubepass_release
     content: |

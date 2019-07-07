@@ -9,7 +9,7 @@ runcmd:
 - chmod +x /usr/local/bin/*
 - bash /usr/local/bin/master-init
 - bash /usr/local/bin/worker-init
-- bash /usr/local/bin/register-init
+- bash /usr/local/bin/registry-init
 bootcmd:
 - "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
 - "curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -"
@@ -43,6 +43,7 @@ packages:
     - jq
     - tftp
     - arp-scan
+    - apache2-utils
 write_files:
   - path: /etc/kubepass_release
     content: |
@@ -83,52 +84,13 @@ write_files:
         #
         # This archive contains:
         #
-        #	bin/register-init
         #	bin/wait-ready
         #	bin/master-init
         #	bin/cloud-log
         #	bin/kinst
+        #	bin/registry-init
         #	bin/worker-init
         #
-        echo x - bin/register-init
-        sed 's/^X//' >bin/register-init << 'END-of-bin/register-init'
-        X#!/bin/bash
-        XCADIR=/etc/docker/certs.d/register.k8s:5000
-        Xif ! test "$(hostname)" == "kube-master"
-        Xthen 
-        X     echo get ca.crt /tmp/ca.crt | tftp kube-master
-        X     if test -s /tmp/ca.crt
-        X     then
-        X       mkdir -p $CADIR
-        X       mv /tmp/ca.crt $CADIR/ca.crt
-        X       IP="$(grep kube-master /etc/hosts  | awk '{ print $1}')"
-        X       echo "$IP register register.k8s" >>/etc/hosts
-        X     fi
-        X     exit
-        Xfi
-        X# preparation
-        XIP=$(ip -4 addr show $(basename /sys/class/net/en*) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-        Xecho "subjectAltName=IP:$IP" >>/etc/ssl/openssl.conf
-        Xecho "$IP register.k8s" >>/etc/hosts
-        Xmkdir -p /certs /etc/docker/certs.d/register.k8s:5000
-        X# generate certs
-        Xopenssl req \
-        X -newkey rsa:4096 -nodes -sha256 \
-        X -keyout /certs/domain.key \
-        X -x509 -days 365 \
-        X -out /certs/domain.crt \
-        X -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=register.k8s"
-        X# make it available to docker and others
-        Xcp /certs/domain.crt /etc/docker/certs.d/register.k8s:5000/ca.crt
-        Xcp /certs/domain.crt /var/lib/tftpboot/ca.crt
-        X# start docker registry
-        Xdocker run -d -p 5000:5000 \
-        X --restart=always --name registry \
-        X -v /certs:/certs \
-        X -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
-        X -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
-        X registry:2
-        END-of-bin/register-init
         echo x - bin/wait-ready
         sed 's/^X//' >bin/wait-ready << 'END-of-bin/wait-ready'
         X#!/bin/bash
@@ -196,6 +158,50 @@ write_files:
         Xshift
         Xsudo /usr/local/bin/$F "$@"
         END-of-bin/kinst
+        echo x - bin/registry-init
+        sed 's/^X//' >bin/registry-init << 'END-of-bin/registry-init'
+        X#!/bin/bash
+        XCADIR=/etc/docker/certs.d/registry.k8s:5000
+        Xif ! test "$(hostname)" == "kube-master"
+        Xthen 
+        X     echo get ca.crt /tmp/ca.crt | tftp kube-master
+        X     if test -s /tmp/ca.crt
+        X     then
+        X       mkdir -p $CADIR
+        X       mv /tmp/ca.crt $CADIR/ca.crt
+        X       IP="$(grep kube-master /etc/hosts  | awk '{ print $1}')"
+        X       echo "$IP registry registry.k8s" >>/etc/hosts
+        X     fi
+        X     exit
+        Xfi
+        X# preparation
+        XIP=$(ip -4 addr show $(basename /sys/class/net/en*) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+        Xecho "subjectAltName=IP:$IP" >>/etc/ssl/openssl.conf
+        Xecho "$IP registry.k8s" >>/etc/hosts
+        Xmkdir -p /certs /etc/docker/certs.d/registry.k8s:5000
+        X# generate certs
+        Xopenssl req \
+        X -newkey rsa:4096 -nodes -sha256 \
+        X -keyout /certs/domain.key \
+        X -x509 -days 365 \
+        X -out /certs/domain.crt \
+        X -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=registry.k8s"
+        X# make it available to docker and others
+        Xcp /certs/domain.crt /etc/docker/certs.d/registry.k8s:5000/ca.crt
+        Xcp /certs/domain.crt /var/lib/tftpboot/ca.crt
+        X# generate htpasswd
+        Xhtpasswd -B -b -n  registry password >/certs/htpasswd
+        X# start docker registry
+        Xdocker run -d -p 5000:5000 \
+        X --restart=always --name registry \
+        X -v /certs:/certs \
+        X -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+        X -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+        X -e REGISTRY_AUTH=htpasswd \
+        X -e REGISTRY_AUTH_HTPASSWD_REALM=basic-realm \
+        X -e REGISTRY_AUTH_HTPASSWD_PATH=/certs/htpasswd \
+        X registry:2
+        END-of-bin/registry-init
         echo x - bin/worker-init
         sed 's/^X//' >bin/worker-init << 'END-of-bin/worker-init'
         X#!/bin/bash

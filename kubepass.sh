@@ -3,6 +3,9 @@
 
 CMD="${1:-help}"
 NUM="${2:-3}"
+MEM="${3:-2}"
+DISK="${4:-15}"
+VCPU="${5:-1}"
 
 YAML="$(dirname $0)/kubepass.yaml"
 MULTIPASS=multipass
@@ -12,9 +15,10 @@ if test -d "$WINMULTIPASS"
 then PATH="$WINMULTIPASS/bin:$PATH"
      MULTIPASS=multipass.exe
 fi
+
 if ! "$MULTIPASS" -h >/dev/null 
-then echo "Install multipass 0.7.0, please."
-     echo "https://github.com/CanonicalLtd/multipass/releases/tag/v0.7.0"
+then echo "Install multipass 0.7.1, please."
+     echo "https://github.com/CanonicalLtd/multipass/releases/tag/v0.7.1"
      exit 1
 fi
 
@@ -56,6 +60,10 @@ are_you_sure() {
 }
 
 case "$CMD" in
+ create) 
+   echo "Creating Large Kubernetes Cluster: master 2G, 3 workers 2G, disk 15G"
+   build $NUM "-c 2 -d ${DISK}G -m ${MEM}G" "-c $VCPU -d ${DISK}G -m ${MEM}G"
+ ;;
  destroy) 
    echo "Destroying the cluster"
    are_you_sure
@@ -71,19 +79,9 @@ case "$CMD" in
  nodes) 
    "$MULTIPASS" exec kube-master -- sudo kubectl get nodes 
  ;;
- huge) 
-   echo "Creating Huge Kubernetes Cluster: master 4G, 3 workers 4G, disk 25G"
-   build $NUM "-c 2 -d 25G -m 4G" "-c 2 -d 25G -m 4G"
- ;;
- large) 
-   echo "Creating Large Kubernetes Cluster: master 2G, 3 workers 2G, disk 15G"
-   build $NUM "-c 2 -d 15G -m 2G" "-c 1 -d 15G -m 2G"
- ;;
- small) 
-   echo "Creating Small Kubernetes Cluster: master 2G, 3 workers 1G, disk 10G"
-   build $NUM "-c 2 -d 10G -m 2G" "-c 1 -d 10G -m 1G"
- ;;
  *)
-    echo "usage: (small|large|huge|config|destroy) [#workers]"
- ;;
+    echo "usage: (create|config|destroy) [#workers] [mem] [disk] [#vcpu]"
+    echo "mem and disk are in giga, workers and vcpu a count"
+    echo "defaults: 3 workers with 1vcpu with 2G mem 15G disk" 
+  ;;
 esac
