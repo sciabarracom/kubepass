@@ -1,5 +1,4 @@
 #!/bin/bash
-# <script>location.href='https://github.com/sciabarracom/kubepass'</script>
 
 CMD="${1:-help}"
 NUM="${2:-3}"
@@ -9,12 +8,6 @@ VCPU="${5:-1}"
 
 YAML="$(dirname $0)/kubepass.yaml"
 MULTIPASS=multipass
-
-WINMULTIPASS="/c/Program Files/Multipass"
-if test -d "$WINMULTIPASS"
-then PATH="$WINMULTIPASS/bin:$PATH"
-     MULTIPASS=multipass.exe
-fi
 
 if ! "$MULTIPASS" -h >/dev/null 
 then echo "Install multipass 0.7.1, please."
@@ -61,7 +54,7 @@ are_you_sure() {
 
 case "$CMD" in
  create) 
-   echo "Creating Large Kubernetes Cluster: master 2G, 3 workers 2G, disk 15G"
+   echo "Creating Kubernetes Cluster: master ${MEM}G 2cpu, $NUM workers with ${VCPU} cpu, ${MEM}G mem, ${DISK}G disk"
    build $NUM "-c 2 -d ${DISK}G -m ${MEM}G" "-c $VCPU -d ${DISK}G -m ${MEM}G"
  ;;
  destroy) 
