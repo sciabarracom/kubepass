@@ -1,5 +1,5 @@
 #!/bin/bash
-CADIR=/etc/docker/certs.d/registry.k8s
+CADIR=/etc/docker/certs.d/registry.kube-system
 if ! test "$(hostname)" == "kube-master"
 then 
      echo get ca.crt /tmp/ca.crt | tftp kube-master
@@ -8,24 +8,24 @@ then
        mkdir -p $CADIR
        mv /tmp/ca.crt $CADIR/ca.crt
        IP="$(grep kube-master /etc/hosts  | awk '{ print $1}')"
-       echo "$IP registry registry.k8s" >>/etc/hosts
+       echo "$IP registry registry.kube-system" >>/etc/hosts
      fi
      exit
 fi
 # preparation
 IP=$(ip -4 addr show $(basename /sys/class/net/en*) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 echo "subjectAltName=IP:$IP" >>/etc/ssl/openssl.conf
-echo "$IP registry.k8s" >>/etc/hosts
-mkdir -p /certs /etc/docker/certs.d/registry.k8s
+echo "$IP registry.kube-system" >>/etc/hosts
+mkdir -p /certs /etc/docker/certs.d/registry.kube-system
 # generate certs
 openssl req \
  -newkey rsa:4096 -nodes -sha256 \
  -keyout /certs/domain.key \
  -x509 -days 365 \
  -out /certs/domain.crt \
- -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=registry.k8s"
+ -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=registry.kube-system"
 # make it available to docker and others
-cp /certs/domain.crt /etc/docker/certs.d/registry.k8s/ca.crt
+cp /certs/domain.crt /etc/docker/certs.d/registry.kube-system/ca.crt
 cp /certs/domain.crt /var/lib/tftpboot/ca.crt
 # generate htpasswd
 htpasswd -B -b -n registry password >/certs/htpasswd
@@ -39,3 +39,38 @@ docker run -d -p 443:5000 \
  -e REGISTRY_AUTH_HTPASSWD_REALM=basic-realm \
  -e REGISTRY_AUTH_HTPASSWD_PATH=/certs/htpasswd \
  registry:2
+# create a proxy to access the registry from kubernetes
+cat <<EOF >/etc/kubernetes/manifests/registry.yaml
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: registry
+  namespace: kube-system
+  labels:
+     app: registry-kube-system
+spec:
+  containers:
+  - name: socat
+    image: alpine/socat
+    ports:
+    - containerPort: 443
+    command:
+    - socat
+    args:
+    - TCP-LISTEN:443,fork
+    - TCP:$IP:443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: kube-system
+spec:
+  selector:
+    app: registry-kube-system
+  ports:
+  - protocol: TCP
+    port: 443
+    targetPort: 443
+EOF

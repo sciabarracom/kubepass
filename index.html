@@ -103,8 +103,7 @@ write_files:
         Xdo C="$(sudo kubectl get nodes | awk '$2 == "Ready"' | wc -l)"   
         X   sleep 1
         Xdone
-        Xkill -9 $PID
-        X
+        Xsudo kill -9 $PID 2>/dev/null
         END-of-bin/wait-ready
         echo x - bin/master-init
         sed 's/^X//' >bin/master-init << 'END-of-bin/master-init'
@@ -161,7 +160,7 @@ write_files:
         echo x - bin/registry-init
         sed 's/^X//' >bin/registry-init << 'END-of-bin/registry-init'
         X#!/bin/bash
-        XCADIR=/etc/docker/certs.d/registry.k8s
+        XCADIR=/etc/docker/certs.d/registry.kube-system
         Xif ! test "$(hostname)" == "kube-master"
         Xthen 
         X     echo get ca.crt /tmp/ca.crt | tftp kube-master
@@ -170,24 +169,24 @@ write_files:
         X       mkdir -p $CADIR
         X       mv /tmp/ca.crt $CADIR/ca.crt
         X       IP="$(grep kube-master /etc/hosts  | awk '{ print $1}')"
-        X       echo "$IP registry registry.k8s" >>/etc/hosts
+        X       echo "$IP registry registry.kube-system" >>/etc/hosts
         X     fi
         X     exit
         Xfi
         X# preparation
         XIP=$(ip -4 addr show $(basename /sys/class/net/en*) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
         Xecho "subjectAltName=IP:$IP" >>/etc/ssl/openssl.conf
-        Xecho "$IP registry.k8s" >>/etc/hosts
-        Xmkdir -p /certs /etc/docker/certs.d/registry.k8s
+        Xecho "$IP registry.kube-system" >>/etc/hosts
+        Xmkdir -p /certs /etc/docker/certs.d/registry.kube-system
         X# generate certs
         Xopenssl req \
         X -newkey rsa:4096 -nodes -sha256 \
         X -keyout /certs/domain.key \
         X -x509 -days 365 \
         X -out /certs/domain.crt \
-        X -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=registry.k8s"
+        X -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=registry.kube-system"
         X# make it available to docker and others
-        Xcp /certs/domain.crt /etc/docker/certs.d/registry.k8s/ca.crt
+        Xcp /certs/domain.crt /etc/docker/certs.d/registry.kube-system/ca.crt
         Xcp /certs/domain.crt /var/lib/tftpboot/ca.crt
         X# generate htpasswd
         Xhtpasswd -B -b -n registry password >/certs/htpasswd
@@ -201,6 +200,41 @@ write_files:
         X -e REGISTRY_AUTH_HTPASSWD_REALM=basic-realm \
         X -e REGISTRY_AUTH_HTPASSWD_PATH=/certs/htpasswd \
         X registry:2
+        X# create a proxy to access the registry from kubernetes
+        Xcat <<EOF >/etc/kubernetes/manifests/registry.yaml
+        X---
+        XapiVersion: v1
+        Xkind: Pod
+        Xmetadata:
+        X  name: registry
+        X  namespace: kube-system
+        X  labels:
+        X     app: registry-kube-system
+        Xspec:
+        X  containers:
+        X  - name: socat
+        X    image: alpine/socat
+        X    ports:
+        X    - containerPort: 443
+        X    command:
+        X    - socat
+        X    args:
+        X    - TCP-LISTEN:443,fork
+        X    - TCP:$IP:443
+        X---
+        XapiVersion: v1
+        Xkind: Service
+        Xmetadata:
+        X  name: registry
+        X  namespace: kube-system
+        Xspec:
+        X  selector:
+        X    app: registry-kube-system
+        X  ports:
+        X  - protocol: TCP
+        X    port: 443
+        X    targetPort: 443
+        XEOF
         END-of-bin/registry-init
         echo x - bin/worker-init
         sed 's/^X//' >bin/worker-init << 'END-of-bin/worker-init'

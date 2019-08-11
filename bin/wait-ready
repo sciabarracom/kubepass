@@ -8,5 +8,4 @@ while test "$C" -lt "$N"
 do C="$(sudo kubectl get nodes | awk '$2 == "Ready"' | wc -l)"   
    sleep 1
 done
-kill -9 $PID
-
+sudo kill -9 $PID 2>/dev/null
