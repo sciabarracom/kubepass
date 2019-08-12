@@ -60,17 +60,4 @@ spec:
     args:
     - TCP-LISTEN:443,fork
     - TCP:$IP:443
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: registry
-  namespace: kube-system
-spec:
-  selector:
-    app: registry-kube-system
-  ports:
-  - protocol: TCP
-    port: 443
-    targetPort: 443
 EOF
