@@ -221,19 +221,6 @@ write_files:
         X    args:
         X    - TCP-LISTEN:443,fork
         X    - TCP:$IP:443
-        X---
-        XapiVersion: v1
-        Xkind: Service
-        Xmetadata:
-        X  name: registry
-        X  namespace: kube-system
-        Xspec:
-        X  selector:
-        X    app: registry-kube-system
-        X  ports:
-        X  - protocol: TCP
-        X    port: 443
-        X    targetPort: 443
         XEOF
         END-of-bin/registry-init
         echo x - bin/worker-init
