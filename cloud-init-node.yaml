@@ -1,12 +1,12 @@
-runcmd:
-- snap install microk8s --classic
-- ufw allow in on cni0 && sudo ufw allow out on cni0
-- ufw default allow routed
-- microk8s start
-- microk8s status -w
-- microk8s join 10.0.0.10:25000/dcae5621555908566197986f93075c4d
+apt_update: true
+apt_upgrade: true
 package_update: true
 package_upgrade: true
 package_reboot_if_required: false
-apt_update: true
-apt_upgrade: true
+runcmd:
+ - snap install microk8s --classic
+ - ufw allow in on cni0 && sudo ufw allow out on cni0
+ - ufw default allow routed
+ - microk8s start
+ - microk8s status -w
+ - microk8s join 10.0.0.10:25000/dcae5621555908566197986f93075c4d

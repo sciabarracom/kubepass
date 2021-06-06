@@ -1,15 +1,15 @@
-runcmd:
-- echo -e "network:\n version: 2\n renderer: networkd\n ethernets:\n  $(ip -o -4 route show to default | awk '{print $5}'):\n    addresses:\n     - 10.0.0.10/24" >/etc/netplan/90-static.yaml
-- netplan apply 
-- snap install microk8s --classic
-- ufw allow in on cni0 && sudo ufw allow out on cni0
-- ufw default allow routed
-- microk8s start
-- microk8s status -w
-- microk8s enable dns storage ingress
-- microk8s add-node --token-ttl 0 --token dcae5621555908566197986f93075c4d
+apt_update: true
+apt_upgrade: true
 package_update: true
 package_upgrade: true
 package_reboot_if_required: false
-apt_update: true
-apt_upgrade: true
+runcmd:
+ - echo -e "network:\n version: 2\n renderer: networkd\n ethernets:\n  $(ip -o -4 route show to default | awk '{print $5}'):\n    addresses:\n     - 10.0.0.10/24" >/etc/netplan/90-static.yaml
+ - netplan apply 
+ - snap install microk8s --classic
+ - ufw allow in on cni0 && sudo ufw allow out on cni0
+ - ufw default allow routed
+ - microk8s start
+ - microk8s status -w
+ - microk8s enable dns storage ingress
+ - microk8s add-node --token-ttl 0 --token dcae5621555908566197986f93075c4d

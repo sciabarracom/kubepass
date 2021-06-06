@@ -13,8 +13,12 @@ bash <(curl bit.ly/kubepass-small)
 
 I want to deploy OpenWhisk on a development cluster
 
+URL=https://raw.githubusercontent.com/openwhisk-blog/create-cluster-kubepass/main/cloud-init-master.yaml
 
-multipass launch -c2 -m2G -n kube0 --cloud-
+curl -sL $URL | multipass launch -c2 -m2G -n kube0 --cloud-init -
+
+
+curl $URL
 
 sudo bash
 
