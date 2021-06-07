@@ -17,13 +17,14 @@ runcmd:
  - ufw default allow routed
  - microk8s start
  - microk8s status -w
- - |
+ - | 
+   N="$(hostname | sed -e 's/[^0-9]*//')" ;
    OUT="$(ip -o -4 route show to default | awk '{print $9}')" ;
-   if test "$(hostname | sed -e 's/[^0-9]*//')" = "0" 
+   if test "$N" = "0"
    then microk8s enable dns storage ingress ;
-        microk8s add-node -t 0123456789abcdef0123456789abcdef ;
+        for ((I=0 ; I < 10 ; I++)) ; do microk8s add-node -t "${I}123456789abcdef0123456789abcdef" ; done ;
         microk8s config | sed -e "s|server: https://10.0.0.10:16443|server: https://$OUT:16443|" >/etc/kubeconfig
-   else while ! microk8s join 10.0.0.10:25000/0123456789abcdef0123456789abcdef
+   else while ! microk8s join "10.0.0.10:25000/${N}123456789abcdef0123456789abcdef"
         do echo retrying to join... ; sleep 10
         done
    fi

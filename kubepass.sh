@@ -11,11 +11,11 @@ then echo "Please install multipass from https://multipass.run/"
      exit 1
 fi
 
-echo "Instance Count  : $N"
-echo "Instance Prefix : $P"
-echo "CPU/instance    : $C"
-echo "Memory/instance : $M"g
-echo "Disk/instance   : $D"g
+echo "Instance Count  : N=$N"
+echo "Instance Prefix : P=$P"
+echo "CPU/instance    : C=$C"
+echo "Memory/instance : M=$M"g
+echo "Disk/instance   : D=$D"g
 
 for ((I=0 ; I < $N ; I++))
 do
