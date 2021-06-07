@@ -1,3 +1,4 @@
+<!--
 +++
 author = "Michele Sciabarrà"
 title = "Create a development Kubernetes cluster with multipass and microk8s"
@@ -6,6 +7,7 @@ description = "You can easily build a development Kubernetes Cluster leveraging 
 tags = [ "Kubernetes" ]
 draft = false
 +++
+-->
 
 Do you want to setup an actual kubernetes *cluster* in cloud machine?  Sure, you can use minikube for this purpose. However I prefer to build a cluster that is closer to the one I use in production. 
 
@@ -13,7 +15,7 @@ For this reason I built my solution for quickly deploying one, using `multipass`
 
 # TL;DR
 
-If you want to deploy a small kubernetes cluter, with just 2 nodes of 2gb each,  [install multipass](https://multipass.run/) clone this repo and run
+If you want to deploy a small kubernetes cluter, with just 2 nodes of 2gb each,  [install multipass](https://multipass.run/), clone this repo and run:
 
 
 ```
@@ -67,7 +69,7 @@ Furthermore, you need to assign at least 2 CPUs (with `-c2`) and 2 GB of memory 
 ```
 multipass launch -nkube0 -m2g -c2 --cloud-init kubepass.yaml
 multipass launch -nkube1 -m2g -c2 --cloud-init kubepass.yaml 
-``
+```
 
 Once you started all your VMs you have to retrieve the kubernetes configuration.
 Luckily microk8s does it for you so all you need to do 
