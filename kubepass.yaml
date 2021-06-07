@@ -5,10 +5,10 @@ package_upgrade: true
 package_reboot_if_required: false
 runcmd:
  - |
-   N="$(hostname | sed -e 's/[^0-9]*//')"
-   IF="$(ip -o -4 route show to default | awk '{print $5}')"
-   IP="$((N+10))"
-   echo -e "network:\n version: 2\n renderer: networkd\n ethernets:\n $IF:\n    addresses:\n     - 10.0.0.$IP/24" >/etc/netplan/90-static.yaml
+   N="$(hostname | sed -e 's/[^0-9]*//')" ;
+   IF="$(ip -o -4 route show to default | awk '{print $5}')" ;
+   IP="$((N+10))" ;
+   printf "network:\n version: 2\n renderer: networkd\n ethernets:\n  $IF:\n    addresses:\n     - 10.0.0.$IP/24" | tee /etc/netplan/90-static.yaml
  - netplan apply 
  - snap install microk8s --classic
  - ufw allow in on cni0 && sudo ufw allow out on cni0
@@ -16,9 +16,12 @@ runcmd:
  - microk8s start
  - microk8s status -w
  - |
-   N="$(hostname | sed -e 's/[^0-9]*//')"
-   if [[ "$N" == "0" ]]
-   then microk8s enable dns storage ingress
-        microk8s add-node --token-ttl 0 --token dcae5621555908566197986f93075c4d
-   else microk8s join 10.0.0.10:25000/dcae5621555908566197986f93075c4d
+   OUT="$(ip -o -4 route show to default | awk '{print $9}')" ;
+   if test "$(hostname | sed -e 's/[^0-9]*//')" = "0" 
+   then microk8s enable dns storage ingress ;
+        microk8s add-node -t 0123456789abcdef0123456789abcdef ;
+        microk8s config | sed -e "s|server: https://10.0.0.10:16443|server: https://$OUT:16443|" >/etc/kubeconfig
+   else while ! microk8s join 10.0.0.10:25000/0123456789abcdef0123456789abcdef
+        do echo retrying to join... ; sleep 10
+        done
    fi
